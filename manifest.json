@@ -4,7 +4,7 @@
   "js": "index.js",
   "css": "style.css",
   "author": "ExampleAuthor",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "homePage": "https://github.com/yourname/SillyTavern-state",
   "auto_update": true,
   "minimum_client_version": "1.13.2",

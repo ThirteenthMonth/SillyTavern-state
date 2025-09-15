@@ -1,7 +1,8 @@
 // SillyTavern-state 扩展脚本
 (function() {
-    const context = SillyTavern.getContext();
-    const { eventSource, event_types, chatMetadata, saveMetadata } = context;
+    function init() {
+        const context = SillyTavern.getContext();
+        const { eventSource, event_types, chatMetadata, saveMetadata } = context;
 
     // 扩展在 chatMetadata 中使用的键名:contentReference[oaicite:0]{index=0}
     const META_KEY = 'sillyTavernState';
@@ -266,6 +267,13 @@
         }
     };
     eventSource.on(event_types.MESSAGE_RECEIVED, globalThis.stateExt.msgHandler);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
 })();
 
 // 提示拦截器：在生成请求前插入当前状态（系统提示）

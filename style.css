@@ -4,7 +4,16 @@
     bottom: 10px;
     right: 10px;
     z-index: 9999;
-    padding: 5px 10px;
+    padding: 6px 12px;
+    font-size: 14px;
+    background: #444;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 /* 悬浮状态栏面板样式 */
@@ -14,13 +23,16 @@
     right: 10px;
     z-index: 9999;
     display: none;
-    background: rgba(0, 0, 0, 0.8);
+    background: #202020;
     color: #fff;
     padding: 10px;
-    border-radius: 5px;
+    border: 1px solid #555;
+    border-radius: 6px;
     max-width: 300px;
     max-height: 400px;
     overflow-y: auto;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+    font-size: 14px;
 }
 
 /* 面板标题栏 */
@@ -53,14 +65,44 @@
     width: 40%;
     margin-right: 4px;
     box-sizing: border-box;
+    font-size: 14px;
 }
 #stateExtPanel button {
     margin: 2px 4px 2px 0;
-    padding: 2px 6px;
+    padding: 4px 8px;
     cursor: pointer;
+    font-size: 14px;
 }
 #stateExtPanel textarea {
     width: 100%;
     box-sizing: border-box;
     margin-bottom: 4px;
+    font-size: 14px;
+}
+
+@media (max-width: 600px) {
+    #stateExtToggleBtn {
+        bottom: 60px;
+        right: 10px;
+        padding: 4px 8px;
+        font-size: 12px;
+    }
+
+    #stateExtPanel {
+        bottom: 0;
+        right: 0;
+        left: 0;
+        width: 100%;
+        max-width: none;
+        height: 50%;
+        max-height: none;
+        border-radius: 10px 10px 0 0;
+        font-size: 12px;
+    }
+
+    #stateExtPanel input[type="text"],
+    #stateExtPanel button,
+    #stateExtPanel textarea {
+        font-size: 12px;
+    }
 }

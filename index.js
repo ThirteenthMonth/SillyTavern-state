@@ -58,7 +58,7 @@
         stateList.forEach((item, idx) => {
             const li = document.createElement('li');
             li.innerHTML = `
-                <span class="state-name">${item.name}</span:
+                <span class="state-name">${item.name}</span>
                 <span class="state-value">${item.value}</span>
                 <input class="edit-name" type="text" style="display:none;" />
                 <input class="edit-value" type="text" style="display:none;" />

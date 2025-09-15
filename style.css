@@ -1,0 +1,66 @@
+/* 悬浮按钮样式 */
+#stateExtToggleBtn {
+    position: fixed;
+    bottom: 10px;
+    right: 10px;
+    z-index: 9999;
+    padding: 5px 10px;
+}
+
+/* 悬浮状态栏面板样式 */
+#stateExtPanel {
+    position: fixed;
+    bottom: 50px;
+    right: 10px;
+    z-index: 9999;
+    display: none;
+    background: rgba(0, 0, 0, 0.8);
+    color: #fff;
+    padding: 10px;
+    border-radius: 5px;
+    max-width: 300px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+/* 面板标题栏 */
+#stateExtPanel .header {
+    font-weight: bold;
+    cursor: move;
+    margin-bottom: 8px;
+    /* 可选：加入背景或边框使其更突出 */
+    /* background: #444; padding: 5px; border-bottom: 1px solid #666; */
+}
+
+/* 状态列表样式 */
+#stateExtPanel ul {
+    list-style: none;
+    margin: 0 0 8px 0;
+    padding: 0;
+}
+#stateExtPanel li {
+    margin-bottom: 5px;
+}
+#stateExtPanel .state-name {
+    font-weight: bold;
+}
+#stateExtPanel .state-value {
+    margin-left: 4px;
+}
+
+/* 编辑输入框和按钮 */
+#stateExtPanel input[type="text"] {
+    width: 40%;
+    margin-right: 4px;
+    box-sizing: border-box;
+}
+#stateExtPanel button {
+    margin: 2px 4px 2px 0;
+    padding: 2px 6px;
+    cursor: pointer;
+}
+#stateExtPanel textarea {
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 4px;
+}

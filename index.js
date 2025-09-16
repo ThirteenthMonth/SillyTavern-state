@@ -1,24 +1,130 @@
 // SillyTavern-state 扩展脚本
+
+const STATE_EXT_SETTINGS_KEY = 'SillyTavern-state';
+const STATE_EXT_DEFAULT_SETTINGS = {
+    enabled: true,
+    autoInjectPrompt: true,
+    stripTagsFromChat: true,
+    customInstruction: '',
+};
+
+function stateExtCloneDefaultSettings() {
+    return JSON.parse(JSON.stringify(STATE_EXT_DEFAULT_SETTINGS));
+}
+
+function stateExtEnsureSettings() {
+    const container = globalThis.extension_settings;
+    if (!container) {
+        return stateExtCloneDefaultSettings();
+    }
+
+    const stored = container[STATE_EXT_SETTINGS_KEY];
+    if (!stored) {
+        const defaults = stateExtCloneDefaultSettings();
+        container[STATE_EXT_SETTINGS_KEY] = defaults;
+        if (globalThis.stateExt) {
+            globalThis.stateExt.settings = defaults;
+        }
+        if (typeof globalThis.saveSettingsDebounced === 'function') {
+            globalThis.saveSettingsDebounced();
+        } else if (typeof globalThis.saveSettings === 'function') {
+            globalThis.saveSettings();
+        }
+        return defaults;
+    }
+
+    const merged = Object.assign({}, STATE_EXT_DEFAULT_SETTINGS, stored);
+    container[STATE_EXT_SETTINGS_KEY] = merged;
+    if (globalThis.stateExt) {
+        globalThis.stateExt.settings = merged;
+    }
+    return merged;
+}
+
+function stateExtUpdateSettings(partial) {
+    const container = globalThis.extension_settings;
+    if (!container) {
+        return stateExtCloneDefaultSettings();
+    }
+
+    const current = stateExtEnsureSettings();
+    Object.assign(current, partial);
+    container[STATE_EXT_SETTINGS_KEY] = current;
+
+    if (globalThis.stateExt) {
+        globalThis.stateExt.settings = current;
+        if (typeof globalThis.stateExt.applyRuntimeSettings === 'function') {
+            globalThis.stateExt.applyRuntimeSettings(current);
+        }
+    }
+
+    if (typeof globalThis.saveSettingsDebounced === 'function') {
+        globalThis.saveSettingsDebounced();
+    } else if (typeof globalThis.saveSettings === 'function') {
+        globalThis.saveSettings();
+    }
+
+    return current;
+}
+
+function stateExtResetSettings() {
+    const container = globalThis.extension_settings;
+    const defaults = stateExtCloneDefaultSettings();
+    if (container) {
+        container[STATE_EXT_SETTINGS_KEY] = defaults;
+    }
+
+    if (globalThis.stateExt) {
+        globalThis.stateExt.settings = defaults;
+        if (typeof globalThis.stateExt.applyRuntimeSettings === 'function') {
+            globalThis.stateExt.applyRuntimeSettings(defaults);
+        }
+    }
+
+    if (typeof globalThis.saveSettingsDebounced === 'function') {
+        globalThis.saveSettingsDebounced();
+    } else if (typeof globalThis.saveSettings === 'function') {
+        globalThis.saveSettings();
+    }
+
+    return defaults;
+}
+
 (function() {
     function init() {
         const context = SillyTavern.getContext();
-        const { eventSource, event_types, chatMetadata, saveMetadata } = context;
+        const { eventSource, event_types, saveMetadata } = context;
 
-    // 扩展在 chatMetadata 中使用的键名:contentReference[oaicite:0]{index=0}
-    const META_KEY = 'sillyTavernState';
+        const META_KEY = 'sillyTavernState';
 
-    // 处理扩展热重载：清理已有的事件监听和 DOM 元素
-    if (globalThis.stateExt?.initialized) {
-        if (globalThis.stateExt.msgHandler) {
-            eventSource.off(event_types.MESSAGE_RECEIVED, globalThis.stateExt.msgHandler);
+        const previousInstance = globalThis.stateExt;
+        if (previousInstance?.initialized) {
+            if (previousInstance.msgHandler) {
+                eventSource.off(event_types.MESSAGE_RECEIVED, previousInstance.msgHandler);
+            }
+            if (previousInstance.chatHandler) {
+                eventSource.off(event_types.CHAT_CHANGED, previousInstance.chatHandler);
+            }
+            if (previousInstance.settingsPanelListener) {
+                eventSource.off(event_types.EXTENSION_SETTINGS_LOADED, previousInstance.settingsPanelListener);
+            }
+            document.getElementById('stateExtPanel')?.remove();
+            document.getElementById('stateExtToggleBtn')?.remove();
+            document.getElementById('stateExtSettingsRoot')?.remove();
         }
-        if (globalThis.stateExt.chatHandler) {
-            eventSource.off(event_types.CHAT_CHANGED, globalThis.stateExt.chatHandler);
+
+        const initialSettings = stateExtEnsureSettings();
+
+        globalThis.stateExt = {
+            initialized: true,
+            settings: initialSettings,
+        };
+
+        let settingsPanelLoading = false;
+
+        function getCurrentSettings() {
+            return globalThis.stateExt?.settings || stateExtEnsureSettings();
         }
-        document.getElementById('stateExtPanel')?.remove();
-        document.getElementById('stateExtToggleBtn')?.remove();
-    }
-    globalThis.stateExt = { initialized: true };
 
     // 获取当前聊天的状态列表（如无则初始化为空数组）
     function getStateList() {
@@ -49,6 +155,24 @@
         <button id="stateExtImpBtn">从世界书提取</button>
     `;
     document.body.appendChild(panel);
+
+    globalThis.stateExt.toggleBtn = toggleBtn;
+    globalThis.stateExt.panel = panel;
+
+    function applyRuntimeSettings(currentSettings) {
+        const config = currentSettings || getCurrentSettings();
+        const isEnabled = config.enabled !== false;
+        if (toggleBtn) {
+            toggleBtn.style.display = isEnabled ? 'flex' : 'none';
+        }
+        if (panel && !isEnabled) {
+            panel.style.display = 'none';
+        }
+        return config;
+    }
+
+    globalThis.stateExt.applyRuntimeSettings = applyRuntimeSettings;
+    applyRuntimeSettings(initialSettings);
 
     // 刷新状态列表 UI 显示
     function refreshListUI() {
@@ -120,6 +244,9 @@
 
     // 悬浮按钮：点击切换面板显隐
     toggleBtn.addEventListener('click', () => {
+        if (!getCurrentSettings().enabled) {
+            return;
+        }
         panel.style.display = (panel.style.display === 'none' ? 'block' : 'none');
     });
 
@@ -230,7 +357,118 @@
         }
     };
 
-    // 监听聊天切换事件：切换对话时更新状态列表显示:contentReference[oaicite:1]{index=1}
+    async function initExtensionSettingsPanel(attempt = 0) {
+        if (settingsPanelLoading) {
+            return;
+        }
+
+        const renderTemplate = globalThis.renderExtensionTemplateAsync;
+        if (typeof renderTemplate !== 'function') {
+            return;
+        }
+
+        const container = document.getElementById('extensions_settings');
+        if (!container) {
+            if (attempt < 5) {
+                setTimeout(() => initExtensionSettingsPanel(attempt + 1), 500);
+            }
+            return;
+        }
+
+        settingsPanelLoading = true;
+        try {
+            container.querySelector('#stateExtSettingsRoot')?.remove();
+
+            const templateBases = ['third-party/SillyTavern-state', 'SillyTavern-state'];
+            let templateHtml = '';
+            for (const basePath of templateBases) {
+                try {
+                    const html = await renderTemplate(basePath, 'index');
+                    if (html) {
+                        templateHtml = html;
+                        break;
+                    }
+                } catch (error) {
+                    console.warn(`[角色状态栏] 无法从 ${basePath} 加载设置模板:`, error);
+                }
+            }
+
+            if (!templateHtml) {
+                console.warn('[角色状态栏] 未能加载扩展设置模板。');
+                return;
+            }
+
+            container.insertAdjacentHTML('beforeend', templateHtml);
+            const root = container.querySelector('#stateExtSettingsRoot');
+            if (!root) {
+                return;
+            }
+
+            const enableToggle = root.querySelector('#stateExt-setting-enable');
+            const injectToggle = root.querySelector('#stateExt-setting-inject');
+            const stripToggle = root.querySelector('#stateExt-setting-strip');
+            const instructionTextarea = root.querySelector('#stateExt-setting-instruction');
+            const restoreButton = root.querySelector('#stateExt-setting-restore');
+
+            function syncControls(config) {
+                if (enableToggle) enableToggle.checked = !!config.enabled;
+                if (injectToggle) injectToggle.checked = config.autoInjectPrompt !== false;
+                if (stripToggle) stripToggle.checked = config.stripTagsFromChat !== false;
+                if (instructionTextarea) instructionTextarea.value = config.customInstruction || '';
+            }
+
+            syncControls(getCurrentSettings());
+
+            if (enableToggle) {
+                enableToggle.addEventListener('change', () => {
+                    stateExtUpdateSettings({ enabled: enableToggle.checked });
+                });
+            }
+
+            if (injectToggle) {
+                injectToggle.addEventListener('change', () => {
+                    stateExtUpdateSettings({ autoInjectPrompt: injectToggle.checked });
+                });
+            }
+
+            if (stripToggle) {
+                stripToggle.addEventListener('change', () => {
+                    stateExtUpdateSettings({ stripTagsFromChat: stripToggle.checked });
+                });
+            }
+
+            if (instructionTextarea) {
+                let debounceTimer;
+                const saveValue = () => {
+                    stateExtUpdateSettings({ customInstruction: instructionTextarea.value });
+                };
+                instructionTextarea.addEventListener('input', () => {
+                    clearTimeout(debounceTimer);
+                    debounceTimer = setTimeout(saveValue, 400);
+                });
+                instructionTextarea.addEventListener('change', saveValue);
+                instructionTextarea.addEventListener('blur', saveValue);
+            }
+
+            if (restoreButton) {
+                restoreButton.addEventListener('click', () => {
+                    const defaults = stateExtResetSettings();
+                    syncControls(defaults);
+                    window.alert('设置已恢复为默认值。');
+                });
+            }
+        } finally {
+            settingsPanelLoading = false;
+            globalThis.stateExt.applyRuntimeSettings?.(getCurrentSettings());
+        }
+    }
+
+    const settingsPanelListener = () => initExtensionSettingsPanel();
+    globalThis.stateExt.settingsPanelListener = settingsPanelListener;
+    eventSource.on(event_types.EXTENSION_SETTINGS_LOADED, settingsPanelListener);
+    initExtensionSettingsPanel();
+
+    // 监听聊天切换事件：切换对话时更新状态列表显示
     globalThis.stateExt.chatHandler = () => {
         stateList = getStateList();
         refreshListUI();
@@ -238,7 +476,11 @@
     eventSource.on(event_types.CHAT_CHANGED, globalThis.stateExt.chatHandler);
 
     // 监听 AI 消息接收事件：解析并应用状态更新标签
-    globalThis.stateExt.msgHandler = (data) => {
+    globalThis.stateExt.msgHandler = () => {
+        const settings = getCurrentSettings();
+        if (!settings.enabled) {
+            return;
+        }
         const chatArr = SillyTavern.getContext().chat;
         if (!chatArr.length) return;
         const lastMsg = chatArr[chatArr.length - 1];
@@ -261,7 +503,7 @@
             refreshListUI();
         }
         // 移除消息中的所有状态标签，留下纯剧情文本
-        if (updated) {
+        if (updated && settings.stripTagsFromChat !== false) {
             content = content.replace(/<[^>]+>[^<]*<\/[^>]+>/g, '').trim();
             lastMsg.mes = content;
         }
@@ -278,6 +520,10 @@
 
 // 提示拦截器：在生成请求前插入当前状态（系统提示）
 globalThis.statePromptInterceptor = async function(chat, contextSize, abort, type) {
+    const settings = stateExtEnsureSettings();
+    if (!settings.enabled || !settings.autoInjectPrompt) {
+        return;
+    }
     // 移除旧的状态系统提示，避免堆积
     for (let i = 0; i < chat.length; i++) {
         const msg = chat[i];
@@ -295,6 +541,10 @@ globalThis.statePromptInterceptor = async function(chat, contextSize, abort, typ
             stateText += `\n${item.name} ${item.value}`;
         });
         stateText += '\n请参考以上状态。在回答时，如有任何状态数值因剧情发生变化，请仅输出发生变化的状态项，并使用 XML 标签格式表示，例如：<生命值>8/10</生命值>。如果没有状态变化，请不要输出任何状态标签。';
+        const extraInstruction = (settings.customInstruction || '').trim();
+        if (extraInstruction) {
+            stateText += `\n${extraInstruction}`;
+        }
         const systemNote = {
             is_user: false,
             name: 'System Note',

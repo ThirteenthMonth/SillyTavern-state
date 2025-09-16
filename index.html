@@ -1,0 +1,77 @@
+<div id="stateExtSettingsRoot">
+  <div class="inline-drawer">
+    <div class="inline-drawer-toggle inline-drawer-header">
+      <b>角色状态栏</b>
+      <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+    </div>
+    <div class="inline-drawer-content">
+      <div class="extension-content flex flexFlowColumn gap10px">
+        <div class="extension-content-item">
+          <div class="flex flexFlowColumn">
+            <div class="settings-title-text">启用角色状态栏</div>
+            <div class="settings-title-description">
+              控制扩展的全部功能，包括悬浮面板、提示注入与状态解析。
+            </div>
+          </div>
+          <div class="toggle-switch">
+            <input type="checkbox" id="stateExt-setting-enable" class="toggle-input" checked />
+            <label for="stateExt-setting-enable" class="toggle-label">
+              <span class="toggle-handle"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="extension-content-item box-container">
+          <div class="flex flexFlowColumn">
+            <div class="settings-title-text">发送前注入系统提示</div>
+            <div class="settings-title-description">
+              为最后一条用户消息补充“当前状态”说明，提示 AI 使用 XML 标签更新数值。
+            </div>
+          </div>
+          <div class="toggle-switch">
+            <input type="checkbox" id="stateExt-setting-inject" class="toggle-input" checked />
+            <label for="stateExt-setting-inject" class="toggle-label">
+              <span class="toggle-handle"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="extension-content-item box-container">
+          <div class="flex flexFlowColumn">
+            <div class="settings-title-text">隐藏消息中的状态标签</div>
+            <div class="settings-title-description">
+              解析 AI 回复的 &lt;状态&gt; 标签后，仅保留纯剧情文本，不在聊天记录中显示标签。
+            </div>
+          </div>
+          <div class="toggle-switch">
+            <input type="checkbox" id="stateExt-setting-strip" class="toggle-input" checked />
+            <label for="stateExt-setting-strip" class="toggle-label">
+              <span class="toggle-handle"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="extension-content-item box-container flex flexFlowColumn">
+          <div class="settings-title-text">附加提示说明</div>
+          <div class="settings-title-description">
+            追加到系统提示末尾的自定义说明，可用于约束输出或描述特殊规则。
+          </div>
+          <textarea
+            id="stateExt-setting-instruction"
+            class="text_pole"
+            rows="3"
+            placeholder="例如：当状态变化时请附带一句剧情描述。"
+          ></textarea>
+        </div>
+
+        <div class="extension-content-item">
+          <button id="stateExt-setting-restore" class="menu_button">
+            <i class="fa-solid fa-rotate-left margin-r5"></i>恢复默认设置
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -99,6 +99,7 @@ function stateExtResetSettings() {
 
         const previousInstance = globalThis.stateExt;
         if (previousInstance?.initialized) {
+            previousInstance.cleanupLayout?.();
             if (previousInstance.msgHandler) {
                 eventSource.off(event_types.MESSAGE_RECEIVED, previousInstance.msgHandler);
             }
@@ -145,6 +146,7 @@ function stateExtResetSettings() {
     // 创建悬浮窗口面板
     const panel = document.createElement('div');
     panel.id = 'stateExtPanel';
+    panel.style.display = 'none';
     panel.innerHTML = `
         <div class="header">角色状态栏</div>
         <ul id="stateExtList"></ul>
@@ -248,27 +250,63 @@ function stateExtResetSettings() {
             return;
         }
         panel.style.display = (panel.style.display === 'none' ? 'block' : 'none');
+        fitPanelToViewport();
     });
 
-    // 悬浮窗拖动功能
-    let dragging = false, dragOffsetX = 0, dragOffsetY = 0;
+    // 使用可见视口约束面板，兼顾旋转、软键盘和内容变化。
+    function fitPanelToViewport() {
+        if (panel.style.display === 'none') return;
+        const viewport = window.visualViewport;
+        const left = viewport?.offsetLeft || 0;
+        const top = viewport?.offsetTop || 0;
+        const width = viewport?.width || window.innerWidth;
+        const height = viewport?.height || window.innerHeight;
+        panel.style.maxWidth = `${Math.min(window.innerWidth <= 600 ? width : 322, width)}px`;
+        panel.style.maxHeight = `${Math.min(window.innerWidth <= 600 ? height : 422, height)}px`;
+        const rect = panel.getBoundingClientRect();
+        const x = Math.max(left, Math.min(rect.left, left + width - rect.width));
+        const y = Math.max(top, Math.min(rect.top, top + height - rect.height));
+        if (x !== rect.left || y !== rect.top) {
+            panel.style.left = `${x}px`;
+            panel.style.top = `${y}px`;
+            panel.style.right = 'auto';
+            panel.style.bottom = 'auto';
+        }
+    }
+
+    // Pointer Events 同时支持鼠标和手机触摸拖动。
+    let dragPointer = null, dragOffsetX = 0, dragOffsetY = 0;
     const headerEl = panel.querySelector('.header');
-    headerEl.addEventListener('mousedown', (e) => {
-        dragging = true;
-        // 计算点击处与面板左上角的偏移
-        dragOffsetX = e.clientX - panel.offsetLeft;
-        dragOffsetY = e.clientY - panel.offsetTop;
+    headerEl.addEventListener('pointerdown', (e) => {
+        if (!e.isPrimary || e.button !== 0) return;
+        dragPointer = e.pointerId;
+        const rect = panel.getBoundingClientRect();
+        dragOffsetX = e.clientX - rect.left;
+        dragOffsetY = e.clientY - rect.top;
+        headerEl.setPointerCapture(e.pointerId);
         e.preventDefault();
     });
-    document.addEventListener('mousemove', (e) => {
-        if (dragging) {
+    headerEl.addEventListener('pointermove', (e) => {
+        if (e.pointerId === dragPointer) {
             panel.style.left = (e.clientX - dragOffsetX) + 'px';
             panel.style.top = (e.clientY - dragOffsetY) + 'px';
             panel.style.bottom = 'auto';
             panel.style.right = 'auto';
+            fitPanelToViewport();
         }
     });
-    document.addEventListener('mouseup', () => { dragging = false; });
+    headerEl.addEventListener('lostpointercapture', () => { dragPointer = null; });
+    window.addEventListener('resize', fitPanelToViewport);
+    window.visualViewport?.addEventListener('resize', fitPanelToViewport);
+    window.visualViewport?.addEventListener('scroll', fitPanelToViewport);
+    const panelResizeObserver = new ResizeObserver(fitPanelToViewport);
+    panelResizeObserver.observe(panel);
+    globalThis.stateExt.cleanupLayout = () => {
+        panelResizeObserver.disconnect();
+        window.removeEventListener('resize', fitPanelToViewport);
+        window.visualViewport?.removeEventListener('resize', fitPanelToViewport);
+        window.visualViewport?.removeEventListener('scroll', fitPanelToViewport);
+    };
 
     // “添加”按钮：批量添加状态项
     panel.querySelector('#stateExtAddBtn').onclick = () => {
